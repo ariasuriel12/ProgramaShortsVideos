@@ -1,0 +1,10 @@
+Shorts/
+*.mp4
+*.mkv
+*.mov
+*.avi
+*.webm
+__pycache__/
+*.pyc
+.venv/
+venv/
