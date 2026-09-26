@@ -250,5 +250,12 @@ tk.Label(
     font=("Arial", 10)
 ).pack()
 
+# Firma de desarrollo
+tk.Label(
+    ventana,
+    text="Desarrollado por UA Devs",
+    font=("Arial", 9, "italic")
+).pack(side="bottom", anchor="e", padx=15, pady=10)
+
 
 ventana.mainloop()
