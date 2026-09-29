@@ -12,8 +12,8 @@ class ShortsApp:
     def __init__(self, ventana):
         self.ventana = ventana
 
-        self.ventana.title("UA Devs Shorts")
-        self.ventana.geometry("900x700")
+        self.ventana.title("UA Devs Shorts V0.4")
+        self.ventana.geometry("900x760")
         self.ventana.resizable(False, False)
 
         self.video = None
@@ -21,6 +21,9 @@ class ShortsApp:
 
         self.inicio = 0
         self.fin = 15
+        self.posicion = 0
+
+        self.reproduciendo = False
 
         # VLC
         self.instance = vlc.Instance()
@@ -28,9 +31,12 @@ class ShortsApp:
 
         self.crear_interfaz()
 
-    # -----------------------------------------
+        # Actualizar posición del video
+        self.actualizar_posicion()
+
+    # =====================================================
     # INTERFAZ
-    # -----------------------------------------
+    # =====================================================
 
     def crear_interfaz(self):
 
@@ -40,15 +46,26 @@ class ShortsApp:
             font=("Arial", 24, "bold")
         )
 
-        titulo.pack(pady=15)
+        titulo.pack(pady=10)
 
-        # Seleccionar video
+        subtitulo = tk.Label(
+            self.ventana,
+            text="Editor de Shorts V0.4",
+            font=("Arial", 10)
+        )
+
+        subtitulo.pack()
+
+        # =================================================
+        # SELECCIONAR VIDEO
+        # =================================================
+
         tk.Button(
             self.ventana,
             text="📁 Seleccionar video",
             font=("Arial", 12, "bold"),
             command=self.seleccionar_video
-        ).pack(pady=5)
+        ).pack(pady=8)
 
         self.nombre_video = tk.Label(
             self.ventana,
@@ -56,26 +73,56 @@ class ShortsApp:
             font=("Arial", 10)
         )
 
-        self.nombre_video.pack(pady=5)
+        self.nombre_video.pack()
 
-        # -----------------------------------------
+        # =================================================
         # VIDEO
-        # -----------------------------------------
+        # =================================================
 
         self.video_frame = tk.Frame(
             self.ventana,
             bg="black",
             width=800,
-            height=430
+            height=400
         )
 
-        self.video_frame.pack(pady=15)
+        self.video_frame.pack(pady=12)
 
         self.video_frame.pack_propagate(False)
 
-        # -----------------------------------------
+        # =================================================
+        # TIEMPO ACTUAL
+        # =================================================
+
+        self.tiempo_actual = tk.StringVar(
+            value="00:00 / 00:00"
+        )
+
+        tk.Label(
+            self.ventana,
+            textvariable=self.tiempo_actual,
+            font=("Arial", 12, "bold")
+        ).pack()
+
+        # =================================================
+        # BARRA DE PROGRESO
+        # =================================================
+
+        self.progreso = tk.Scale(
+            self.ventana,
+            from_=0,
+            to=100,
+            orient="horizontal",
+            length=750,
+            showvalue=False,
+            command=self.mover_video
+        )
+
+        self.progreso.pack()
+
+        # =================================================
         # CONTROLES
-        # -----------------------------------------
+        # =================================================
 
         controles = tk.Frame(self.ventana)
 
@@ -83,63 +130,121 @@ class ShortsApp:
 
         tk.Button(
             controles,
+            text="⏪ -5s",
+            width=8,
+            command=lambda: self.saltar(-5)
+        ).grid(row=0, column=0, padx=3)
+
+        tk.Button(
+            controles,
             text="▶ Reproducir",
+            width=12,
             command=self.reproducir
-        ).grid(row=0, column=0, padx=5)
+        ).grid(row=0, column=1, padx=3)
 
         tk.Button(
             controles,
             text="⏸ Pausar",
+            width=10,
             command=self.pausar
-        ).grid(row=0, column=1, padx=5)
+        ).grid(row=0, column=2, padx=3)
 
         tk.Button(
             controles,
             text="⏹ Detener",
+            width=10,
             command=self.detener
-        ).grid(row=0, column=2, padx=5)
+        ).grid(row=0, column=3, padx=3)
 
-        # -----------------------------------------
-        # TIEMPOS
-        # -----------------------------------------
+        tk.Button(
+            controles,
+            text="+5s ⏩",
+            width=8,
+            command=lambda: self.saltar(5)
+        ).grid(row=0, column=4, padx=3)
 
-        tiempos = tk.Frame(self.ventana)
+        # =================================================
+        # MARCAR INICIO / FIN
+        # =================================================
 
-        tiempos.pack(pady=10)
+        marcadores = tk.Frame(self.ventana)
 
-        tk.Label(
-            tiempos,
-            text="Inicio:"
+        marcadores.pack(pady=10)
+
+        tk.Button(
+            marcadores,
+            text="🟢 Marcar inicio",
+            font=("Arial", 11, "bold"),
+            command=self.marcar_inicio
         ).grid(row=0, column=0, padx=10)
 
-        self.inicio_var = tk.StringVar(value="00:00")
-
-        tk.Label(
-            tiempos,
-            textvariable=self.inicio_var,
-            font=("Arial", 12, "bold")
+        tk.Button(
+            marcadores,
+            text="🔴 Marcar fin",
+            font=("Arial", 11, "bold"),
+            command=self.marcar_fin
         ).grid(row=0, column=1, padx=10)
 
+        # =================================================
+        # INFORMACIÓN
+        # =================================================
+
+        informacion = tk.Frame(self.ventana)
+
+        informacion.pack(pady=5)
+
         tk.Label(
-            tiempos,
+            informacion,
+            text="Inicio:"
+        ).grid(row=0, column=0, padx=5)
+
+        self.inicio_var = tk.StringVar(
+            value="00:00"
+        )
+
+        tk.Label(
+            informacion,
+            textvariable=self.inicio_var,
+            font=("Arial", 11, "bold")
+        ).grid(row=0, column=1, padx=5)
+
+        tk.Label(
+            informacion,
             text="Fin:"
-        ).grid(row=0, column=2, padx=10)
+        ).grid(row=0, column=2, padx=5)
 
-        self.fin_var = tk.StringVar(value="00:15")
+        self.fin_var = tk.StringVar(
+            value="00:15"
+        )
 
         tk.Label(
-            tiempos,
+            informacion,
             textvariable=self.fin_var,
-            font=("Arial", 12, "bold")
-        ).grid(row=0, column=3, padx=10)
+            font=("Arial", 11, "bold")
+        ).grid(row=0, column=3, padx=5)
 
-        # -----------------------------------------
+        tk.Label(
+            informacion,
+            text="Duración:"
+        ).grid(row=0, column=4, padx=5)
+
+        self.duracion_short_var = tk.StringVar(
+            value="15 segundos"
+        )
+
+        tk.Label(
+            informacion,
+            textvariable=self.duracion_short_var,
+            font=("Arial", 11, "bold")
+        ).grid(row=0, column=5, padx=5)
+
+        # =================================================
         # SLIDER INICIO
-        # -----------------------------------------
+        # =================================================
 
         tk.Label(
             self.ventana,
-            text="🟢 Inicio del Short"
+            text="🟢 Punto de inicio"
         ).pack()
 
         self.slider_inicio = tk.Scale(
@@ -153,13 +258,13 @@ class ShortsApp:
 
         self.slider_inicio.pack()
 
-        # -----------------------------------------
+        # =================================================
         # SLIDER FIN
-        # -----------------------------------------
+        # =================================================
 
         tk.Label(
             self.ventana,
-            text="🔴 Fin del Short"
+            text="🔴 Punto final"
         ).pack()
 
         self.slider_fin = tk.Scale(
@@ -173,22 +278,22 @@ class ShortsApp:
 
         self.slider_fin.pack()
 
-        # -----------------------------------------
+        # =================================================
         # CREAR SHORT
-        # -----------------------------------------
+        # =================================================
 
         tk.Button(
             self.ventana,
             text="🎬 CREAR SHORT",
             font=("Arial", 14, "bold"),
             padx=25,
-            pady=10,
+            pady=8,
             command=self.generar_short
-        ).pack(pady=15)
+        ).pack(pady=10)
 
-        # -----------------------------------------
+        # =================================================
         # ESTADO
-        # -----------------------------------------
+        # =================================================
 
         self.estado = tk.Label(
             self.ventana,
@@ -207,12 +312,12 @@ class ShortsApp:
             side="bottom",
             anchor="e",
             padx=15,
-            pady=8
+            pady=5
         )
 
-    # -----------------------------------------
+    # =====================================================
     # SELECCIONAR VIDEO
-    # -----------------------------------------
+    # =====================================================
 
     def seleccionar_video(self):
 
@@ -239,15 +344,12 @@ class ShortsApp:
             text=os.path.basename(archivo)
         )
 
-        # Obtener duración
         self.obtener_duracion()
 
-        # Cargar video en VLC
         media = self.instance.media_new(archivo)
 
         self.player.set_media(media)
 
-        # Conectar VLC con Tkinter
         self.player.set_xwindow(
             self.video_frame.winfo_id()
         )
@@ -256,9 +358,9 @@ class ShortsApp:
             text="✅ Video cargado"
         )
 
-    # -----------------------------------------
-    # OBTENER DURACIÓN
-    # -----------------------------------------
+    # =====================================================
+    # DURACIÓN
+    # =====================================================
 
     def obtener_duracion(self):
 
@@ -279,16 +381,23 @@ class ShortsApp:
         )
 
         try:
+
             self.duracion = float(
                 resultado.stdout.strip()
             )
 
         except ValueError:
+
             messagebox.showerror(
                 "Error",
-                "No se pudo obtener la duración del video."
+                "No se pudo obtener la duración."
             )
+
             return
+
+        self.progreso.config(
+            to=self.duracion
+        )
 
         self.slider_inicio.config(
             to=self.duracion
@@ -298,51 +407,230 @@ class ShortsApp:
             to=self.duracion
         )
 
-        # Fin inicial = 15 segundos
+        self.inicio = 0
         self.fin = min(15, self.duracion)
 
-        self.slider_inicio.set(0)
+        self.slider_inicio.set(self.inicio)
         self.slider_fin.set(self.fin)
 
-        self.actualizar_tiempos()
+        self.actualizar_informacion()
 
-    # -----------------------------------------
-    # CAMBIAR INICIO
-    # -----------------------------------------
+    # =====================================================
+    # REPRODUCCIÓN
+    # =====================================================
+
+    def reproducir(self):
+
+        if not self.video:
+
+            messagebox.showwarning(
+                "Video",
+                "Primero seleccioná un video."
+            )
+
+            return
+
+        self.player.play()
+
+        self.reproduciendo = True
+
+        self.estado.config(
+            text="▶ Reproduciendo..."
+        )
+
+    def pausar(self):
+
+        self.player.pause()
+
+        self.reproduciendo = False
+
+        self.estado.config(
+            text="⏸ Pausado"
+        )
+
+    def detener(self):
+
+        self.player.stop()
+
+        self.reproduciendo = False
+
+        self.estado.config(
+            text="⏹ Detenido"
+        )
+
+    # =====================================================
+    # SALTAR
+    # =====================================================
+
+    def saltar(self, segundos):
+
+        if not self.video:
+            return
+
+        posicion = self.player.get_time()
+
+        nueva_posicion = posicion + segundos * 1000
+
+        nueva_posicion = max(
+            0,
+            min(
+                nueva_posicion,
+                int(self.duracion * 1000)
+            )
+        )
+
+        self.player.set_time(
+            int(nueva_posicion)
+        )
+
+    # =====================================================
+    # MOVER VIDEO
+    # =====================================================
+
+    def mover_video(self, valor):
+
+        if not self.video:
+            return
+
+        posicion = float(valor)
+
+        self.player.set_time(
+            int(posicion * 1000)
+        )
+
+    # =====================================================
+    # ACTUALIZAR POSICIÓN
+    # =====================================================
+
+    def actualizar_posicion(self):
+
+        if self.video:
+
+            posicion = self.player.get_time()
+
+            if posicion >= 0:
+
+                segundos = posicion / 1000
+
+                self.posicion = segundos
+
+                self.progreso.set(
+                    segundos
+                )
+
+                self.tiempo_actual.set(
+                    f"{self.formatear_tiempo(segundos)} / "
+                    f"{self.formatear_tiempo(self.duracion)}"
+                )
+
+        self.ventana.after(
+            200,
+            self.actualizar_posicion
+        )
+
+    # =====================================================
+    # MARCAR INICIO
+    # =====================================================
+
+    def marcar_inicio(self):
+
+        if not self.video:
+            return
+
+        self.inicio = self.posicion
+
+        if self.inicio >= self.fin:
+
+            self.fin = min(
+                self.duracion,
+                self.inicio + 1
+            )
+
+            self.slider_fin.set(
+                self.fin
+            )
+
+        self.slider_inicio.set(
+            self.inicio
+        )
+
+        self.actualizar_informacion()
+
+    # =====================================================
+    # MARCAR FIN
+    # =====================================================
+
+    def marcar_fin(self):
+
+        if not self.video:
+            return
+
+        self.fin = self.posicion
+
+        if self.fin <= self.inicio:
+
+            self.inicio = max(
+                0,
+                self.fin - 1
+            )
+
+            self.slider_inicio.set(
+                self.inicio
+            )
+
+        self.slider_fin.set(
+            self.fin
+        )
+
+        self.actualizar_informacion()
+
+    # =====================================================
+    # SLIDER INICIO
+    # =====================================================
 
     def cambiar_inicio(self, valor):
 
         self.inicio = float(valor)
 
         if self.inicio >= self.fin:
-            self.inicio = max(0, self.fin - 1)
-            self.slider_inicio.set(self.inicio)
 
-        self.actualizar_tiempos()
+            self.inicio = max(
+                0,
+                self.fin - 1
+            )
 
-    # -----------------------------------------
-    # CAMBIAR FIN
-    # -----------------------------------------
+            self.slider_inicio.set(
+                self.inicio
+            )
+
+        self.actualizar_informacion()
+
+    # =====================================================
+    # SLIDER FIN
+    # =====================================================
 
     def cambiar_fin(self, valor):
 
         self.fin = float(valor)
 
         if self.fin <= self.inicio:
+
             self.fin = min(
                 self.duracion,
                 self.inicio + 1
             )
 
-            self.slider_fin.set(self.fin)
+            self.slider_fin.set(
+                self.fin
+            )
 
-        self.actualizar_tiempos()
+        self.actualizar_informacion()
 
-    # -----------------------------------------
-    # ACTUALIZAR TIEMPOS
-    # -----------------------------------------
+    # =====================================================
+    # INFORMACIÓN
+    # =====================================================
 
-    def actualizar_tiempos(self):
+    def actualizar_informacion(self):
 
         self.inicio_var.set(
             self.formatear_tiempo(self.inicio)
@@ -352,67 +640,62 @@ class ShortsApp:
             self.formatear_tiempo(self.fin)
         )
 
+        duracion = self.fin - self.inicio
+
+        self.duracion_short_var.set(
+            f"{duracion:.1f} segundos"
+        )
+
+    # =====================================================
+    # FORMATEAR TIEMPO
+    # =====================================================
+
     def formatear_tiempo(self, segundos):
 
         minutos = int(segundos // 60)
-        segundos_restantes = int(segundos % 60)
 
-        return f"{minutos:02d}:{segundos_restantes:02d}"
-
-    # -----------------------------------------
-    # REPRODUCIR
-    # -----------------------------------------
-
-    def reproducir(self):
-
-        if not self.video:
-            messagebox.showwarning(
-                "Video",
-                "Primero seleccioná un video."
-            )
-            return
-
-        self.player.play()
-
-        self.estado.config(
-            text="▶ Reproduciendo..."
+        segundos_restantes = int(
+            segundos % 60
         )
 
-    # -----------------------------------------
-    # PAUSAR
-    # -----------------------------------------
-
-    def pausar(self):
-
-        self.player.pause()
-
-        self.estado.config(
-            text="⏸ Video pausado"
+        return (
+            f"{minutos:02d}:"
+            f"{segundos_restantes:02d}"
         )
 
-    # -----------------------------------------
-    # DETENER
-    # -----------------------------------------
-
-    def detener(self):
-
-        self.player.stop()
-
-        self.estado.config(
-            text="⏹ Video detenido"
-        )
-
-    # -----------------------------------------
+    # =====================================================
     # CREAR SHORT
-    # -----------------------------------------
+    # =====================================================
 
     def generar_short(self):
 
         if not self.video:
+
             messagebox.showwarning(
                 "Video",
                 "Primero seleccioná un video."
             )
+
+            return
+
+        duracion = self.fin - self.inicio
+
+        if duracion <= 0:
+
+            messagebox.showerror(
+                "Error",
+                "El intervalo seleccionado no es válido."
+            )
+
+            return
+
+        if duracion > 60:
+
+            messagebox.showerror(
+                "Error",
+                "El Short no puede superar los 60 segundos."
+            )
+
             return
 
         try:
@@ -435,7 +718,8 @@ class ShortsApp:
 
             messagebox.showinfo(
                 "Short creado",
-                f"El Short fue creado correctamente.\n\n"
+                f"Short creado correctamente.\n\n"
+                f"Duración: {duracion:.1f} segundos\n\n"
                 f"{salida}"
             )
 
@@ -451,9 +735,9 @@ class ShortsApp:
             )
 
 
-# -----------------------------------------
-# INICIAR APP
-# -----------------------------------------
+# =========================================================
+# INICIAR
+# =========================================================
 
 ventana = tk.Tk()
 
